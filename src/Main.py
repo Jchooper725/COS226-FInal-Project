@@ -3,6 +3,7 @@ Created on Dec 10, 2025
 
 @author: jacksonhooper
 '''
+import os
 from BTree import BTree
 import csv
 import tkinter as tk
@@ -152,32 +153,48 @@ def print_user_options():
 #
 # Sets arrays that store states and locations of hash tables and index state for each column
 #
-def set_hash_and_index(file):
+def set_hash_and_index(file, index = []):
     
+    #Multiplies by 1.5 to allow for sufficient space within hash table
+    hash_tables = [None] * len(file[0])
     
-    hash = []
-    index = []
-    
-    for i in range(len(file[0])):
+    for i in range(len(hash_tables)):
         
-        hash.append(create_hash_table(i, file))
-        index.append([False, None])
+        hash_tables[i] = add_hash_table(i, file)
+        
+        if index == []:
+            
+            index.append([False, None])
+            
+        else:
+            
+            for i in range(len(index)):
+                
+                if index[i][0]:
+                
+                    index[i][1] = create_b_tree(i, file)
+                
     
-    return hash, index
+    return hash_tables, index
 
 #
 # Creates hash table for given column
 #
-def create_hash_table(column, file):
+def add_hash_table(column, file):
     
-    #Multiplies by 1.5 to allow for sufficient space within hash table
-    hash_array = [-1] * next_prime(int(len(file) * 1.5))
+    hash_array = [None] * next_prime(int(len(file) * 1.5))
     
     for i in range(len(file)):
         
         if i != 0:
+            
+            if hash_array[hash_function(file[i][column], len(hash_array))] != None:
+                
+                hash_array[hash_function(file[i][column], len(hash_array))].append(file[i])
+                
+            else:
         
-            hash_array[hash_function(str(file[i][column]), len(hash_array))] = file[i][column]
+                hash_array[hash_function(file[i][column], len(hash_array))] = [file[i]]
     
     return hash_array
   
@@ -301,6 +318,85 @@ def create_b_tree(index, file):
         counter += 1
         
     return tree
+
+#
+# Searches for the value specified and returns row in CSV where data is found
+#
+def exact_value_search(file, hash_tables):
+    
+    output_array = []
+    
+    user_input = input("What would you like to search?: ")
+
+    user_hash = hash_function(user_input, next_prime(int(len(file) * 1.5)))
+    
+    for table in hash_tables:
+        
+        if table[user_hash] != None:
+        
+            for data in table[user_hash]:
+                
+                for i in range(len(data)):
+                    
+                    if data[i] == user_input: 
+                        
+                            output_array.append(data)
+    
+    if len(output_array) == 0:
+        
+        print("No results found.")
+        return file
+    
+    else:
+                            
+        for j in range(len(output_array)):
+            
+            print(output_array[j])
+        
+        print_decision = input("Would you like to download your results?\n1 - Yes\n2 - No\n")
+        
+        if print_decision == "1":
+            
+            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+            file_path = os.path.join(desktop, "exact_search_results.csv")
+            export_csv(output_array, file_path)
+            print("Download Complete\n")
+        
+        delete_decision = input("Would you like to delete this data from the database?\n1 - Yes\n2 - No\n")
+        
+        if delete_decision == "1":
+            
+            return delete_data(output_array, file)
+            print("Deletion Complete\n")
+            
+        return file
+#
+# Method to export CSV file to desktop   
+#
+def export_csv(data, filename):
+
+    with open(filename, mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerows(data)
+
+#
+# Deletes data from all active databases. Returns new file
+#
+def delete_data(array, file):
+    
+    for data in array:
+        
+        try:
+            
+            file.remove(data)
+            
+        except:
+            
+            pass
+            
+    return file
+
+
 #
 # Calls fileSort to obtain CSV File. Currently just ensuring the list of lists is being created properly.
 #
@@ -312,7 +408,9 @@ def main():
     #create hash tables and index array
     hash_tables, indexed_fields = set_hash_and_index(inputFile)
     
-    #runs until user submits something that is not a 1 2 or 3
+    #
+    # Runs until user submits something that is not a 1 2 or 3
+    #
     while True:
         
         user_choice = print_user_options()
@@ -321,18 +419,16 @@ def main():
         
             indexed_fields = create_index(indexed_fields, inputFile)
             
-            for range in indexed_fields:
-                print(range)
-            
-        if user_choice == "2":
+        elif user_choice == "2":
         
-            pass
+            input_file = exact_value_search(inputFile, hash_tables)
+            hash_tables, indexed_fields = set_hash_and_index(inputFile)
         
-        if user_choice == "3":
+        elif user_choice == "3":
             
             pass
             
-        if user_choice == "4":
+        else:
             
             break
     
