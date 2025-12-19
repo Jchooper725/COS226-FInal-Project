@@ -36,22 +36,14 @@ def check_double(s: str) -> bool:
 #
 def make_double(str):
     
-    num = "1234567890"
+    num = "1234567890."
     return_str = ""
-    has_decimal = False
     
-    for letter in str:
+    for char in str:
         
-        if letter == ".":
+        if char in num:
             
-            if not has_decimal:
-                
-                has_decimal = True
-                return_str += "."
-        
-        elif letter in num:
-            
-            return_str += letter
+            return_str += char
     
     return float(return_str)
 
@@ -153,20 +145,26 @@ def print_user_options():
 #
 # Sets arrays that store states and locations of hash tables and index state for each column
 #
-def set_hash_and_index(file, index = []):
+def set_hash_and_index(file, index = None):
     
     #Multiplies by 1.5 to allow for sufficient space within hash table
     hash_tables = [None] * len(file[0])
     
-    for i in range(len(hash_tables)):
+    if index == None:
         
-        hash_tables[i] = add_hash_table(i, file)
-        
-        if index == []:
+        index = []
+    
+        for i in range(len(hash_tables)):
             
+            hash_tables[i] = add_hash_table(i, file)
+    
             index.append([False, None])
             
-        else:
+    else:
+        
+        for i in range(len(hash_tables)):
+            
+            hash_tables[i] = add_hash_table(i, file)
             
             for i in range(len(index)):
                 
@@ -306,14 +304,14 @@ def create_index(index_array, file):
 #
 def create_b_tree(index, file):
     
-    tree = BTree(5)
+    tree = BTree(10)
     counter = 0
     
     for row in file:
         
         if counter != 0:
         
-            tree.insert(make_double(row[index]))
+            tree.insert([make_double(row[index]), row])
             
         counter += 1
         
@@ -396,6 +394,233 @@ def delete_data(array, file):
             
     return file
 
+#
+# Performs the ranged search function
+#
+def range_search(indexed_fields, file):
+    
+    available_fields = []
+    
+    #gets the indexes of all fields that have been indexed already
+    for i in range(len(indexed_fields)):
+        
+        if indexed_fields[i][0]:
+        
+            available_fields.append(i)
+    
+    print("Choose a field that has been indexed to search from:")
+    
+    if len(available_fields) == 0:
+        
+        print("No fields have been indexed yet.")
+    
+    else:
+        
+        for i in range(len(available_fields)):
+            
+            print(f"{i} - {file[0][available_fields[i]]}")
+            
+        column = int(input())
+
+        try:
+        
+            if column < len(available_fields):
+                
+                btree = indexed_fields[available_fields[column]][1]
+                
+                print("How would you like to search?\n1 - Lower Bound\n2 - Upper Bound\n3 - Both")
+                
+                bound_choice = input()
+                
+                if bound_choice == "1":
+                    
+                    print("Submit your lower bound:")
+                    
+                    try:  
+                        
+                        lower_bound = make_double(input(""))
+                    
+                        matches = tree_lower_helper(btree.root, lower_bound)
+                        
+                        if len(matches) == 0:
+        
+                            print("No results found.")
+                            return file
+                        
+                        for row in matches:
+                            
+                            print(row)
+                            
+                        print_decision = input("Would you like to download your results?\n1 - Yes\n2 - No\n")
+        
+                        if print_decision == "1":
+                            
+                            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+                            file_path = os.path.join(desktop, "range_query_results.csv")
+                            export_csv(matches, file_path)
+                            print("Download Complete\n")
+                        
+                        delete_decision = input("Would you like to delete this data from the database?\n1 - Yes\n2 - No\n")
+                        
+                        if delete_decision == "1":
+                            
+                            print("Deletion Complete\n")
+                            return delete_data(matches, file)
+                            
+                        return file
+                        
+                    except:
+                        
+                        print("Error in Bound")
+                    
+                
+                elif bound_choice == "2":
+                    
+                    print("Submit your upper bound:")
+                    
+                    try:  
+                        
+                        upper_bound = make_double(input(""))
+                    
+                        matches = tree_upper_helper(btree.root, upper_bound)
+                        
+                        if len(matches) == 0:
+        
+                            print("No results found.")
+                            return file
+                        
+                        for row in matches:
+                            
+                            print(row)
+                            
+                        print_decision = input("Would you like to download your results?\n1 - Yes\n2 - No\n")
+        
+                        if print_decision == "1":
+                            
+                            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+                            file_path = os.path.join(desktop, "range_query_results.csv")
+                            export_csv(matches, file_path)
+                            print("Download Complete\n")
+                        
+                        delete_decision = input("Would you like to delete this data from the database?\n1 - Yes\n2 - No\n")
+                        
+                        if delete_decision == "1":
+                            
+                            print("Deletion Complete\n")
+                            return delete_data(matches, file)
+                            
+                        return file
+                        
+                    except:
+                        
+                        print("Error in Bound")
+                
+                elif bound_choice == "3":
+                    
+                    try:  
+                        
+                        print("Submit your upper bound:")
+                        
+                        upper_bound = make_double(input(""))
+                        
+                        print("Submit your lower bound:")
+                        
+                        lower_bound = make_double(input(""))
+                    
+                        matches = tree_both_helper(btree.root, lower_bound, upper_bound)
+                        
+                        if len(matches) == 0:
+        
+                            print("No results found.")
+                            return file
+                        
+                        for row in matches:
+                            
+                            print(row)
+                            
+                        print_decision = input("Would you like to download your results?\n1 - Yes\n2 - No\n")
+        
+                        if print_decision == "1":
+                            
+                            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+                            file_path = os.path.join(desktop, "range_query_results.csv")
+                            export_csv(matches, file_path)
+                            print("Download Complete\n")
+                        
+                        delete_decision = input("Would you like to delete this data from the database?\n1 - Yes\n2 - No\n")
+                        
+                        if delete_decision == "1":
+                            
+                            print("Deletion Complete\n")
+                            return delete_data(matches, file)
+                            
+                        return file
+                        
+                    except:
+                        
+                        print("Error in Bound")
+                 
+
+        except:
+            
+            return file
+
+
+def tree_lower_helper(node, lower_bound, result=None):
+    if result is None:
+        result = []
+
+    if node is None:
+        return result
+
+    # Check keys in this node
+    for key in node.keys:
+        if key[0] >= lower_bound:
+            result.append(key[1])
+
+    # Recurse into children
+    for child in node.children:
+        tree_lower_helper(child, lower_bound, result)
+
+    return result
+
+def tree_upper_helper(node, upper_bound, result=None):
+    if result is None:
+        result = []
+
+    if node is None:
+        return result
+
+    # Check keys in this node
+    for key in node.keys:
+        if key[0] <= upper_bound:
+            result.append(key[1])
+
+    # Recurse into children
+    for child in node.children:
+        tree_upper_helper(child, upper_bound, result)
+
+    return result
+
+def tree_both_helper(node, lower_bound, upper_bound, result=None):
+    if result is None:
+        result = []
+
+    if node is None:
+        return result
+
+    # Check keys in this node
+    for key in node.keys:
+        if lower_bound <= key[0] <= upper_bound:
+            result.append(key[1])
+
+    # Recurse into children
+    for child in node.children:
+        tree_both_helper(child, lower_bound, upper_bound, result)
+
+    return result
+
+
 
 #
 # Calls fileSort to obtain CSV File. Currently just ensuring the list of lists is being created properly.
@@ -421,12 +646,13 @@ def main():
             
         elif user_choice == "2":
         
-            input_file = exact_value_search(inputFile, hash_tables)
-            hash_tables, indexed_fields = set_hash_and_index(inputFile)
+            inputFile = exact_value_search(inputFile, hash_tables)
+            hash_tables, indexed_fields = set_hash_and_index(inputFile, indexed_fields)
         
         elif user_choice == "3":
             
-            pass
+            inputFile = range_search(indexed_fields, inputFile)
+            hash_tables, indexed_fields = set_hash_and_index(inputFile, indexed_fields)
             
         else:
             
